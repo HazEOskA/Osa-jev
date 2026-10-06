@@ -1,9 +1,2 @@
-import { ChatArea } from "@/components/chat-area"
-
-export default function Home() {
-  return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      <ChatArea />
-    </div>
-  )
-}
+import App from "@/components/agent-chat/App"
+export default function Home(){return <App/>}
