@@ -43,6 +43,17 @@ export function ChatArea() {
       const data = await r.json()
       if (!r.ok || !data.answer || !data.receipt) throw Error(data.error || "Nieprawidłowa odpowiedź serwera")
       setMessages(old => [...old, { role: "assistant", content: data.answer, receipt: data.receipt }])
+      if (data.receipt.generation_status !== "SUCCEEDED") {
+        const reason = data.receipt.failure_reason
+        setError(reason === "MODEL_NOT_FREE_OR_UNAVAILABLE"
+          ? "Ten model OpenRouter nie jest potwierdzony jako darmowy. Żądanie do modelu zostało zablokowane."
+          : reason === "FREE_MODEL_UNAVAILABLE"
+            ? "Darmowe modele OpenRouter nie odpowiedziały. Nie użyto płatnego modelu."
+            : reason === "PROVIDER_NOT_CONFIGURED"
+              ? "Wybrany dostawca nie jest skonfigurowany."
+              : "Generowanie odpowiedzi nie powiodło się. Zobacz receipt.")
+        setInput(message)
+      }
       if (memoryOn && data.receipt.generation_status === "SUCCEEDED") {
         const next = [...memory, message].slice(-6); setMemory(next)
         try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
