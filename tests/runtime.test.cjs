@@ -47,3 +47,71 @@ test("pusta odpowiedź providera ma status FAILED",async()=>{
   assert.equal(payload.receipt.generation_status,"FAILED");
   assert.equal(payload.receipt.provider,"none");
 });
+
+test("płatny model blokowany bez wywołania chatu",async()=>{
+  reset();process.env.OPENROUTER_API_KEY="fake-test";const called=[];
+  global.fetch=async(url)=>{called.push(url);
+    if(url.includes("decisions"))return new Response(JSON.stringify({answers:{workflow:{choice:"general_advice"}}}));
+    if(url.endsWith("/models"))return new Response(JSON.stringify({data:[{id:"vendor/paid",pricing:{prompt:"0.2",completion:"1"}}]}));
+    throw Error("paid chat must not be invoked");
+  };
+  const {payload}=await run({message:"Pomóż mi",provider:"openrouter",model:"vendor/paid"});
+  assert.equal(payload.receipt.failure_reason,"MODEL_NOT_FREE_OR_UNAVAILABLE");
+  assert.deepEqual(payload.receipt.attempted_models,[]);
+  assert.ok(!called.some(url=>url.includes("chat/completions")));
+});
+test("wycofany slug jest pominięty na rzecz nowego modelu free",async()=>{
+  reset();process.env.OPENROUTER_API_KEY="fake-test";const called=[];
+  global.fetch=async(url,opts)=>{
+    if(url.includes("decisions"))return new Response(JSON.stringify({answers:{workflow:{choice:"general_advice"}}}));
+    if(url.endsWith("/models"))return new Response(JSON.stringify({data:[{id:"qwen/qwen3.8-27b",pricing:{prompt:"0.1",completion:"0.2"}},{id:"community/new:free",pricing:{prompt:"0",completion:"0"}}]}));
+    called.push(JSON.parse(opts.body).model);
+    return new Response(JSON.stringify({choices:[{message:{content:"OK"}}],model:called.at(-1)}));
+  };
+  const {payload}=await run({message:"Pomóż mi",provider:"openrouter"});
+  assert.equal(payload.receipt.generation_status,"SUCCEEDED");
+  assert.deepEqual(called,["community/new:free"]);
+});
+test("fallback OpenRouter próbuje wyłącznie darmowe modele",async()=>{
+  reset();process.env.OPENROUTER_API_KEY="fake-test";const called=[];
+  global.fetch=async(url,opts)=>{
+    if(url.includes("decisions"))return new Response(JSON.stringify({answers:{workflow:{choice:"plan"}}}));
+    if(url.endsWith("/models"))return new Response(JSON.stringify({data:[{id:"qwen/qwen3.8-27b:free",pricing:{prompt:"0",completion:"0"}},{id:"community/new:free",pricing:{prompt:"0",completion:"0"}},{id:"vendor/paid",pricing:{prompt:"0.1",completion:"1"}}]}));
+    const model=JSON.parse(opts.body).model;called.push(model);
+    return model==="qwen/qwen3.8-27b:free"?new Response(JSON.stringify({error:{message:"This model is unavailable for free"}}),{status:404}):new Response(JSON.stringify({choices:[{message:{content:"OK"}}],model}));
+  };
+  const {payload}=await run({message:"Zrób plan",provider:"openrouter"});
+  assert.equal(payload.receipt.generation_status,"SUCCEEDED");
+  assert.deepEqual(called,["qwen/qwen3.8-27b:free","community/new:free"]);
+  assert.ok(!called.includes("vendor/paid"));
+});
+test("gdy katalog niedostępny, wolno użyć tylko free routera",async()=>{
+  reset();process.env.OPENROUTER_API_KEY="fake-test";const called=[];
+  global.fetch=async(url,opts)=>{
+    if(url.includes("decisions"))return new Response(JSON.stringify({answers:{workflow:{choice:"general_advice"}}}));
+    if(url.endsWith("/models"))return new Response(JSON.stringify({error:"down"}),{status:503});
+    called.push(JSON.parse(opts.body).model);
+    return new Response(JSON.stringify({choices:[{message:{content:"OK"}}],model:"openrouter/free"}));
+  };
+  const {payload}=await run({message:"Wyjaśnij",provider:"openrouter"});
+  assert.equal(payload.receipt.generation_status,"SUCCEEDED");
+  assert.deepEqual(called,["openrouter/free"]);
+});
+test("AUTO nie wywołuje NVIDIA bez jawnego wyboru",async()=>{
+  reset();process.env.NVIDIA_API_KEY="fake-test";
+  global.fetch=async()=>{throw Error("unexpected network")};
+  const {payload}=await run({message:"Wyjaśnij",provider:"auto"});
+  assert.equal(payload.receipt.generation_status,"NOT_CONFIGURED");
+  assert.deepEqual(payload.receipt.attempted_models,[]);
+});
+test("brak pricing nie autoryzuje modelu free",async()=>{
+  reset();process.env.OPENROUTER_API_KEY="fake-test";const called=[];
+  global.fetch=async(url,opts)=>{
+    if(url.includes("decisions"))return new Response(JSON.stringify({answers:{workflow:{choice:"general_advice"}}}));
+    if(url.endsWith("/models"))return new Response(JSON.stringify({data:[{id:"vendor/trap:free",pricing:{}}]}));
+    called.push(JSON.parse(opts.body).model);
+    return new Response(JSON.stringify({choices:[{message:{content:"OK"}}],model:"openrouter/free"}));
+  };
+  await run({message:"Wyjaśnij",provider:"openrouter"});
+  assert.deepEqual(called,["openrouter/free"]);
+});
