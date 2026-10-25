@@ -1,5 +1,6 @@
 import type {ChatAPI} from '../api';
 import type {Conversation,Execution,ProofRecord,SendRequest,SendResult,StreamEvent,SystemStatus} from '../../types';
+const { readGlmSse }: { readGlmSse: (body: ReadableStream<Uint8Array>, signal: AbortSignal) => AsyncIterable<string> } = require('../glm-sse.cjs');
 export class CockpitAdapter implements ChatAPI {
  private conversations=new Map<string,Conversation>();
  private executions=new Map<string,Execution>();
@@ -20,6 +21,22 @@ export class CockpitAdapter implements ChatAPI {
   const c=this.conversations.get(r.conversationId);if(!c)throw Error('Brak rozmowy');c.messages.push(result.user,result.assistant);c.updatedAt=result.user.createdAt;if(c.messages.length===2)c.title=r.content.slice(0,46);
   const controller=new AbortController();const cancel=()=>controller.abort();signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();const timer=setTimeout(cancel,95000);
   try{
+   if(r.modelId==='glm'){
+    if(!r.glmAccessToken?.trim())throw Error('GLM_ACCESS_TOKEN_MISSING');
+    const history=c.messages.filter(m=>(m.role==='user'||(m.role==='assistant'&&m.status==='completed'))&&m.content.trim().length>0).slice(-40).map(m=>({role:m.role,content:m.content}));
+    const response=await fetch('/api/glm-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+r.glmAccessToken.trim()},signal:controller.signal,body:JSON.stringify({messages:history})});
+    if(!response.ok||!response.body)throw Error('GLM_HTTP_'+response.status);
+    let answer='';
+    for await(const delta of readGlmSse(response.body,controller.signal)){
+     answer+=delta;result.assistant.content=answer;yield {type:'delta',text:delta};
+    }
+    if(!answer.trim())throw Error('GLM_EMPTY_RESPONSE');
+    const now=new Date().toISOString();
+    const execution:Execution={...result.execution,status:'completed',steps:[{id:'glm',name:'GLM · kompletny strumień SSE',status:'completed',timestamp:now,durationMs:Date.now()-new Date(result.execution.createdAt).getTime()}],components:{Hermes:'unknown',Jeverson:'unknown',Runtime:'completed',APR:'unknown',Monitoring:'unknown'}};
+    const message={...result.assistant,content:answer,status:'completed' as const};Object.assign(result.assistant,message);this.executions.set(execution.id,execution);
+    yield {type:'complete',message,execution};
+    return;
+   }
    const response=await fetch('/api/cockpit',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({message:r.content,mode:r.mode==='agent'?'agent':'chat',provider:['nvidia','openrouter'].includes(r.modelId)?r.modelId:'auto',workspace:'OSA',memory:c.messages.filter(m=>m.role==='user'&&m.id!==result.user.id).slice(-6).map(m=>m.content)})});
    const d=await response.json();if(!response.ok||typeof d.answer!=='string'||typeof d.receipt?.execution_id!=='string')throw Error('Nieprawidłowa odpowiedź runtime');
    const success=d.receipt.generation_status==='SUCCEEDED';const now=new Date().toISOString();
@@ -28,7 +45,7 @@ export class CockpitAdapter implements ChatAPI {
    const message={...result.assistant,content:d.answer,status:success?'completed' as const:'error' as const,error:success?undefined:'runtime' as const,executionId:execution.id,proofId:proof.id};Object.assign(result.assistant,message);this.executions.set(execution.id,execution);this.proofs.set(proof.id,proof);
    yield {type:'complete',message,execution,proof};
   }catch{
-   const code=signal.aborted?'interrupted':'network';const execution:Execution={...result.execution,status:signal.aborted?'cancelled':'failed'};Object.assign(result.assistant,{status:signal.aborted?'interrupted':'error',error:code});this.executions.set(execution.id,execution);yield {type:'error',code,execution};
+   const code=signal.aborted?'interrupted':r.modelId==='glm'?'runtime':'network';const execution:Execution={...result.execution,status:signal.aborted?'cancelled':'failed'};Object.assign(result.assistant,{status:signal.aborted?'interrupted':'error',error:code});this.executions.set(execution.id,execution);yield {type:'error',code,execution};
   }finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);}
  }
  async getExecution(id:string){const e=this.executions.get(id);if(!e)throw Error('Brak wykonania');return e;}

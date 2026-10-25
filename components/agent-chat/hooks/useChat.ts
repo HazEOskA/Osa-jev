@@ -29,10 +29,11 @@ export function useChat(api:ChatAPI){
  const remove=async(id:string)=>{await api.deleteConversation(id);const list=await api.getConversations();setConversations(list);if(activeId===id){if(list[0])setActiveId(list[0].id);else await newChat();}};
  const send=async(content:string,attachments:Attachment[],preferences:Preferences,retryConversationId?:string)=>{
   if(sendingRef.current||(!content.trim()&&!attachments.length))return;
+  if(preferences.modelId==='glm'&&!preferences.glmAccessToken.trim()){setFatal('GLM: otwórz Ustawienia → Klucze API i wpisz token dostępu OSA Jeff.');return false;}
   sendingRef.current=true;setBusy(true);setFatal('');
   const conversationId=retryConversationId??activeId;
   const controller=new AbortController();abortRef.current=controller;
-  const request:SendRequest={conversationId,content:content.trim(),attachments,modelId:preferences.modelId,mode:preferences.mode,scenario:preferences.scenario};
+  const request:SendRequest={conversationId,content:content.trim(),attachments,modelId:preferences.modelId,mode:preferences.mode,scenario:preferences.scenario,glmAccessToken:preferences.modelId==='glm'?preferences.glmAccessToken:undefined};
   let result:Awaited<ReturnType<ChatAPI['sendMessage']>>|undefined;
   try{
    result=await api.sendMessage(request);const current=result;
@@ -43,7 +44,7 @@ export function useChat(api:ChatAPI){
     if(!mounted.current)break;
     if(event.type==='delta'){buffer+=event.text;patchMessage(conversationId,current.assistant.id,{content:buffer});}
     else if(event.type==='execution')setExecutions(es=>({...es,[event.execution.id]:event.execution}));
-    else if(event.type==='complete'){patchMessage(conversationId,current.assistant.id,event.message);setExecutions(es=>({...es,[event.execution.id]:event.execution}));setProofs(ps=>({...ps,[event.proof.id]:event.proof}));}
+    else if(event.type==='complete'){patchMessage(conversationId,current.assistant.id,event.message);setExecutions(es=>({...es,[event.execution.id]:event.execution}));if(event.proof)setProofs(ps=>({...ps,[event.proof!.id]:event.proof!}));}
     else{patchMessage(conversationId,current.assistant.id,{status:event.code==='interrupted'?'interrupted':'error',error:event.code});setExecutions(es=>({...es,[event.execution.id]:event.execution}));}
    }
   }catch{
