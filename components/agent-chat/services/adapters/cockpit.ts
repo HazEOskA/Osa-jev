@@ -38,7 +38,7 @@ export class CockpitAdapter implements ChatAPI {
     return;
    }
    const response=await fetch('/api/cockpit',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({message:r.content,mode:r.mode==='agent'?'agent':'chat',provider:['nvidia','openrouter'].includes(r.modelId)?r.modelId:'auto',workspace:'OSA',memory:c.messages.filter(m=>m.role==='user'&&m.id!==result.user.id).slice(-6).map(m=>m.content)})});
-   const d=await response.json();if(!response.ok||typeof d.answer!=='string'||typeof d.receipt?.execution_id!=='string')throw Error('Nieprawidłowa odpowiedź runtime');
+   const d=await response.json();if((!response.ok&&response.status!==503)||typeof d.answer!=='string'||typeof d.receipt?.execution_id!=='string')throw Error('Nieprawidłowa odpowiedź runtime');
    const success=d.receipt.generation_status==='SUCCEEDED';const now=new Date().toISOString();
    const execution:Execution={...result.execution,id:d.receipt.execution_id,status:success?'completed':'failed',steps:[{id:'runtime',name:'Odpowiedź runtime · '+String(d.receipt.provider),status:success?'completed':'failed',timestamp:now,durationMs:Number(d.receipt.latency_ms)||0}],components:{Hermes:'unknown',Jeverson:d.route?.source==='jev'?'completed':'unknown',Runtime:success?'completed':'failed',APR:'unknown',Monitoring:'unknown'}};
    const proof:ProofRecord={id:'receipt_'+execution.id,executionId:execution.id,status:'recorded',timestamp:now,simulated:false,evidence:[{type:'execution_receipt',description:JSON.stringify(d.receipt,null,2),source:'/api/cockpit'}]};
