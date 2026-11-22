@@ -12,7 +12,7 @@ const cfg={
   AUTH_SECRET:"X".repeat(64), AUTH_GOOGLE_ID:"test-id",AUTH_GOOGLE_SECRET:"test-secret",
   DATABASE_URL:"postgresql://localhost/test",
 };
-test("exactly two distinct verified Google emails are allowlisted",()=>{
+test("one or more explicitly allowed verified Google emails are accepted",()=>{
   assert.equal(policy.allowedEmails(cfg).size,2);
   assert.equal(policy.isAllowedGoogleProfile({sub:"1234567890",email:"OSA@example.com",email_verified:true},cfg),true);
   assert.equal(policy.isAllowedGoogleProfile({sub:"1234567890",email:"intruder@example.com",email_verified:true},cfg),false);
@@ -25,8 +25,10 @@ test("login infrastructure fails closed if OAuth, DB, or allowlist missing",()=>
   assert.equal(policy.isConfigured({...cfg,DATABASE_URL:""}),false);
   assert.equal(policy.isConfigured({...cfg,AUTH_SECRET:"bad"}),false);
   assert.equal(policy.isConfigured({...cfg,AUTH_GOOGLE_ID:""}),false);
-  assert.equal(policy.isConfigured({...cfg,OSA_JEFF_ALLOWED_EMAILS:"osa@example.com"}),false);
-  assert.equal(policy.isConfigured({...cfg,OSA_JEFF_ALLOWED_EMAILS:"osa@example.com,osa@example.com"}),false);
+  assert.equal(policy.isConfigured({...cfg,OSA_JEFF_ALLOWED_EMAILS:"osa@example.com"}),true);
+  assert.equal(policy.isConfigured({...cfg,OSA_JEFF_ALLOWED_EMAILS:"osa@example.com,osa@example.com"}),true);
+  assert.equal(policy.isConfigured({...cfg,OSA_JEFF_ALLOWED_EMAILS:""}),false);
+  assert.equal(policy.isConfigured({...cfg,OSA_JEFF_ALLOWED_EMAILS:"not-an-email"}),false);
 });
 test("mutating endpoints reject cross-origin requests and missing browser origin",()=>{
   const req=(origin,site)=>({url:"https://osa-jeff.vercel.app/api/credentials",
