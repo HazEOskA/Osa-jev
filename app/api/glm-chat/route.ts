@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server"
+const jeffSession = require("../../../lib/jeff-session.cjs") as {COOKIE:string;verifySession:(session:string|undefined,secret:string|undefined)=>boolean;sameOrigin:(request:Request)=>boolean}
 
 const core = require("../../../lib/glm-chat-core.cjs") as {
   MODEL: string
@@ -17,7 +18,12 @@ export async function POST(request: NextRequest) {
   if (!secret || secret.length < 16) {
     return Response.json({ error: "Czat wyłączony: administrator musi skonfigurować JEFF_CHAT_ACCESS_TOKEN." }, { status: 503, headers })
   }
-  if (!core.checkAccess(request.headers.get("authorization"), secret)) {
+  const bearer = core.checkAccess(request.headers.get("authorization"), secret)
+  const found = (request.headers.get("cookie") || "").split(";").map(s => s.trim())
+    .find(v => v.startsWith(jeffSession.COOKIE + "="))
+  const cookie = found ? found.slice(jeffSession.COOKIE.length + 1) : undefined
+  const cookieSession = jeffSession.verifySession(cookie, secret) && jeffSession.sameOrigin(request)
+  if (!bearer && !cookieSession) {
     return Response.json({ error: "Odmowa dostępu do czatu." }, { status: 401, headers })
   }
   const apiKey = process.env.EXPLABS_API_KEY

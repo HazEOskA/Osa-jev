@@ -29,11 +29,10 @@ export function useChat(api:ChatAPI){
  const remove=async(id:string)=>{await api.deleteConversation(id);const list=await api.getConversations();setConversations(list);if(activeId===id){if(list[0])setActiveId(list[0].id);else await newChat();}};
  const send=async(content:string,attachments:Attachment[],preferences:Preferences,retryConversationId?:string)=>{
   if(sendingRef.current||(!content.trim()&&!attachments.length))return;
-  if(preferences.modelId==='glm'&&!preferences.glmAccessToken.trim()){setFatal('GLM: otwórz Ustawienia → Klucze API i wpisz token dostępu OSA Jeff.');return false;}
   sendingRef.current=true;setBusy(true);setFatal('');
   const conversationId=retryConversationId??activeId;
   const controller=new AbortController();abortRef.current=controller;
-  const request:SendRequest={conversationId,content:content.trim(),attachments,modelId:preferences.modelId,mode:preferences.mode,scenario:preferences.scenario,glmAccessToken:preferences.modelId==='glm'?preferences.glmAccessToken:undefined};
+  const request:SendRequest={conversationId,content:content.trim(),attachments,modelId:preferences.modelId,mode:preferences.mode,scenario:preferences.scenario};
   let result:Awaited<ReturnType<ChatAPI['sendMessage']>>|undefined;
   try{
    result=await api.sendMessage(request);const current=result;
