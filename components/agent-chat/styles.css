@@ -5,3 +5,25 @@
 @media(max-width:540px){.chat-header{padding:0 10px;height:60px}.header-title{max-width:155px;font-size:12px}.header-title svg{display:none}.header-right{gap:4px}.demo-pill{display:none}.health-button{padding:0 5px}.health-button>span:nth-child(2){font-size:10px}.health-button>svg{display:none}.mobile-new{display:flex}.empty-state{padding:42px 21px 25px}.empty-emblem{width:48px;height:48px;margin-bottom:23px;border-radius:14px}.empty-emblem>span:first-child{font-size:36px}.eyebrow{font-size:8px;letter-spacing:1.4px}.empty-state h1{font-size:28px;letter-spacing:-.8px;margin-bottom:12px}.empty-state>p{font-size:12px;max-width:240px;margin:auto}.suggestions{grid-template-columns:1fr;gap:8px;margin:26px 0 21px}.suggestions button{min-height:66px;padding:13px 15px;border-radius:10px}.suggestions small{font-size:10px;margin-top:5px}.empty-demo{font-size:9px}.composer-area{padding:8px 12px max(10px,env(safe-area-inset-bottom))}.composer{border-radius:14px}.composer textarea{min-height:58px;padding:17px 16px 8px;font-size:16px}.composer-toolbar{padding:0 7px 7px;gap:0}.select-wrap select{font-size:11px;padding-left:8px;max-width:105px}.toolbar-divider{margin:0 1px}.composer-footnote{font-size:9px;max-width:270px;margin:8px auto 0}.messages{padding:12px 18px 15px}.user-message{margin:14px 0 28px}.user-message>div{font-size:13px;max-width:90%;padding:11px 14px}.assistant-label{margin-bottom:14px}.assistant-label>span:last-child{font-size:9px}.markdown{font-size:13px;line-height:1.8}.markdown h2{font-size:18px}.component-list{gap:2px 15px}.proof-strip .text-button{padding:0}.proof-strip{gap:8px}.dialog-backdrop{padding:0}.dialog{max-width:none;max-height:100dvh;height:100dvh;border:0;border-radius:0}.dialog-header{padding:10px 16px}.settings-layout{flex-direction:column}.settings-nav{width:auto;display:flex;overflow-x:auto;flex-shrink:0;padding:8px 12px;border-right:0;border-bottom:1px solid #323039;gap:4px}.settings-nav button{width:auto;flex-shrink:0;margin:0;padding:0 10px;font-size:11px;gap:7px}.settings-content{padding:24px 20px}.settings-content h3{font-size:17px}.proof-body,.simple-form{padding:20px}.setting-row{gap:10px}.setting-row select{max-width:125px}.setting-row small{max-width:210px}.status-footer{flex-wrap:wrap}.scroll-bottom{bottom:165px}.fatal-error{padding:6px 14px;flex-wrap:wrap}.trace-list li{gap:9px}.trace-list strong{font-size:10px}.execution-content{padding-left:10px}.composer-notice{font-size:10px}.receipt dd code{font-size:10px}}
 @media(max-height:740px) and (max-width:540px){.empty-state{padding-top:20px}.empty-emblem{margin-bottom:16px}.suggestions{margin-top:20px}.suggestions button{min-height:60px}.empty-demo{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+/* OSA Jeff Ready P0: login shell, separate from the original chat design. */
+.auth-screen{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(ellipse at 30% 15%,rgba(54,110,128,.16),transparent 52%),
+  radial-gradient(ellipse at 85% 82%,rgba(68,64,135,.14),transparent 55%),#080c12;color:#e8eef7}
+.auth-panel{width:min(100%,440px);padding:40px;border:1px solid rgba(159,179,218,.18);
+  border-radius:24px;background:rgba(16,22,32,.95);box-shadow:0 32px 100px rgba(0,0,0,.42);
+  display:flex;flex-direction:column;gap:18px}
+.auth-brand{font-size:1rem;letter-spacing:.23em;font-weight:800;color:#c8f2ff}
+.auth-brand span{font-size:.6rem;letter-spacing:.12em;margin-left:8px;border-radius:12px;
+  border:1px solid rgba(171,216,235,.33);padding:4px 8px;color:#afc4d2}
+.auth-panel h1{font-size:clamp(1.5rem,5vw,2.15rem);line-height:1.16;margin:10px 0 0;color:#fff}
+.auth-panel p{font-size:.94rem;line-height:1.7;color:#adbdcb;margin:0}
+.auth-panel small{font-size:.77rem;color:#92a7b7;line-height:1.55}
+.auth-google{background:#d9f2fb;color:#111a24;border:0;border-radius:12px;min-height:50px;
+  font-size:.94rem;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
+.auth-google:hover{background:#fff;transform:translateY(-1px)}
+.auth-google:focus-visible{outline:3px solid #56cef4;outline-offset:3px}
+.vault-row{border-bottom:1px solid rgba(140,161,181,.18);padding:12px 0}
+.vault-row .form-actions{margin-top:8px;justify-content:flex-end}
+@media(max-width:520px){.auth-panel{padding:28px 24px;border-radius:18px}}

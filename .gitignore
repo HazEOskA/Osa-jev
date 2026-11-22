@@ -18,6 +18,7 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.osa-jeff.example
 
 # vercel
 .vercel
