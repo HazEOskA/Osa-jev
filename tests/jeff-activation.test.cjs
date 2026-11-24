@@ -1,0 +1,52 @@
+"use strict";
+const {test}=require("node:test");
+const assert=require("node:assert/strict");
+const {randomBytes}=require("node:crypto");
+const fs=require("node:fs");
+const path=require("node:path");
+const {HOST,VALID_MS,createActivation,verifyActivation}=require("../lib/jeff-activation.cjs");
+const {COOKIE,createSession,verifySession}=require("../lib/jeff-session.cjs");
+const key=randomBytes(32).toString("hex");
+test("activation uses separate random HMAC key, five-minute expiry and fixed Preview host",()=>{
+  assert.equal(VALID_MS,300000);
+  assert.match(HOST,/^osa-jev-git-feat-jeff-quick-access-p0-[a-z0-9-]+\.vercel\.app$/);
+  const proof=createActivation(key,1000000);
+  assert.match(proof,/^[\w-]+\.[\w-]+$/);
+  assert.equal(verifyActivation(proof,key,HOST,1000000),true);
+  assert.equal(verifyActivation(proof,key,HOST,1000000+VALID_MS-1),true);
+  assert.equal(verifyActivation(proof,key,HOST,1000000+VALID_MS),false);
+  assert.equal(verifyActivation(proof,key,"other-host.example",1000000),false);
+  assert.equal(verifyActivation(proof,randomBytes(32).toString("hex"),HOST,1000000),false);
+  assert.equal(verifyActivation(proof.slice(0,-1)+(proof.endsWith("A")?"B":"A"),key,HOST,1000000),false);
+  assert.equal(verifyActivation(proof,key,HOST,1000000-VALID_MS),false);
+  assert.equal(verifyActivation("garbage",key,HOST),false);
+});
+test("an activation proof does not contain the real Jeff access token",()=>{
+  const token=randomBytes(32).toString("hex");
+  const proof=createActivation(key,1000000);
+  assert.equal(proof.includes(token),false);
+  const session=createSession(token,1000000);
+  assert.equal(verifySession(session,token,1000000),true);
+  assert.match(COOKIE,/^__Host-/);
+});
+test("activation endpoint requires same-origin POST, exact host and signed proof",()=>{
+  const src=fs.readFileSync(path.join(__dirname,"../app/api/jeff-activate/route.ts"),"utf8");
+  assert.match(src,/session\.sameOrigin\(request\)/);
+  assert.match(src,/request\.nextUrl\.host!==activation\.HOST/);
+  assert.match(src,/activation\.verifyActivation\(/);
+  assert.match(src,/response\.cookies\.set\(session\.COOKIE,session\.createSession\(secret\)/);
+  assert.match(src,/httpOnly:true,secure:true,sameSite:"strict"/);
+  assert.doesNotMatch(src,/console\.|localStorage|URLSearchParams|searchParams\.get/);
+});
+test("isolated activation page clears hash before POST and forbids third-party scripts",()=>{
+  const src=fs.readFileSync(path.join(__dirname,"../app/activate/route.ts"),"utf8");
+  assert.match(src,/window\.history\.replaceState\(null,"","\/activate"\)/);
+  const posClear=src.indexOf('window.history.replaceState');
+  const posFetch=src.indexOf('fetch("/api/jeff-activate"');
+  assert.ok(posClear>=0 && posFetch>posClear);
+  assert.match(src,/default-src 'none'/);
+  assert.match(src,/script-src 'nonce-/);
+  assert.match(src,/connect-src 'self'/);
+  assert.match(src,/no-referrer/);
+  assert.doesNotMatch(src,/@vercel\/analytics|localStorage|sessionStorage|console\.log/);
+});
