@@ -44,7 +44,7 @@ export function useChat(api:ChatAPI){
     if(event.type==='delta'){buffer+=event.text;patchMessage(conversationId,current.assistant.id,{content:buffer});}
     else if(event.type==='execution')setExecutions(es=>({...es,[event.execution.id]:event.execution}));
     else if(event.type==='complete'){patchMessage(conversationId,current.assistant.id,event.message);setExecutions(es=>({...es,[event.execution.id]:event.execution}));if(event.proof)setProofs(ps=>({...ps,[event.proof!.id]:event.proof!}));}
-    else{patchMessage(conversationId,current.assistant.id,{status:event.code==='interrupted'?'interrupted':'error',error:event.code});setExecutions(es=>({...es,[event.execution.id]:event.execution}));}
+    else{patchMessage(conversationId,current.assistant.id,{status:event.code==='interrupted'?'interrupted':'error',error:event.code,errorDetail:event.detail});setExecutions(es=>({...es,[event.execution.id]:event.execution}));}
    }
   }catch{
    if(result)patchMessage(conversationId,result.assistant.id,{status:'error',error:'network'});

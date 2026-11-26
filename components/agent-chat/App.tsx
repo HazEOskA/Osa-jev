@@ -17,7 +17,7 @@ export default function App(){
  const [sidebar,setSidebar]=useState(false),[desktopCollapsed,setDesktopCollapsed]=useState(false),[settings,setSettings]=useState(false);
  const [drafts,setDrafts]=useState<Record<string,string>>({}),[nearBottom,setNearBottom]=useState(true);
  const scrollRef=useRef<HTMLDivElement>(null),drawerRef=useRef<HTMLElement>(null),menuRef=useRef<HTMLButtonElement>(null);
- const onChange=useCallback((p:Partial<Preferences>)=>setPreferences(v=>({...v,...p})),[]);
+ const onChange=useCallback((p:Partial<Preferences>)=>setPreferences(v=>({...v,...p,modelId:'glm',mode:'auto',showProof:false,monitoring:false})),[]);
  const draft=drafts[chat.activeId]??'';
  const setDraft=(s:string)=>setDrafts(ds=>({...ds,[chat.activeId]:s}));
  useEffect(()=>{const el=scrollRef.current;if(el&&preferences.autoScroll&&nearBottom)el.scrollTop=el.scrollHeight;},[chat.active?.messages,preferences.autoScroll]);

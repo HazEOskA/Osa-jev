@@ -31,9 +31,9 @@ export class CockpitAdapter implements ChatAPI {
   const controller=new AbortController();const cancel=()=>controller.abort();signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();const timer=setTimeout(cancel,95000);
   try{
    if(r.modelId==='glm'){
-    const history=c.messages.filter(m=>(m.role==='user'||(m.role==='assistant'&&m.status==='completed'))&&m.content.trim().length>0).slice(-40).map(m=>({role:m.role,content:m.content}));
+    const history=[{role:'user',content:r.content}];
     const response=await fetch('/api/glm-chat',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({messages:history})});
-    if(!response.ok||!response.body)throw Error('GLM_HTTP_'+response.status);
+    if(!response.ok){const data=await response.json().catch(()=>null);throw Error(typeof data?.error==='string'?data.error:'GLM HTTP '+response.status);}if(!response.body)throw Error('GLM: brak odpowiedzi.');
     let answer='';
     for await(const delta of readGlmSse(response.body,controller.signal)){
      answer+=delta;result.assistant.content=answer;yield {type:'delta',text:delta};
@@ -52,8 +52,8 @@ export class CockpitAdapter implements ChatAPI {
    const proof:ProofRecord={id:'receipt_'+execution.id,executionId:execution.id,status:'recorded',timestamp:now,simulated:false,evidence:[{type:'execution_receipt',description:JSON.stringify(d.receipt,null,2),source:'/api/cockpit'}]};
    const message={...result.assistant,content:d.answer,status:success?'completed' as const:'error' as const,error:success?undefined:'runtime' as const,executionId:execution.id,proofId:proof.id};Object.assign(result.assistant,message);this.executions.set(execution.id,execution);this.proofs.set(proof.id,proof);await storeConversation(c);
    yield {type:'complete',message,execution,proof};
-  }catch{
-   const code=signal.aborted?'interrupted':r.modelId==='glm'?'runtime':'network';const execution:Execution={...result.execution,status:signal.aborted?'cancelled':'failed'};Object.assign(result.assistant,{status:signal.aborted?'interrupted':'error',error:code});this.executions.set(execution.id,execution);await storeConversation(c);yield {type:'error',code,execution};
+  }catch(err){
+   const code=signal.aborted?'interrupted':r.modelId==='glm'?'runtime':'network';const execution:Execution={...result.execution,status:signal.aborted?'cancelled':'failed'};Object.assign(result.assistant,{status:signal.aborted?'interrupted':'error',error:code,errorDetail:r.modelId==='glm'&&!signal.aborted&&err instanceof Error?err.message:undefined});this.executions.set(execution.id,execution);await storeConversation(c);yield {type:'error',code,execution,detail:result.assistant.errorDetail};
   }finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);}
  }
  async getExecution(id:string){const e=this.executions.get(id);if(!e)throw Error('Brak wykonania');return e;}

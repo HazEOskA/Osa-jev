@@ -4,7 +4,7 @@ import {Dialog} from '../../components/Dialog';
 import type {Preferences} from '../../state/settings';
 import type {MockScenario} from '../../types';
 import {models} from '../../mock/data';
-const tabs=[{id:'general',name:'Ogólne',icon:SlidersHorizontal},{id:'models',name:'Modele',icon:Boxes},{id:'keys',name:'Klucze API',icon:KeyRound},{id:'runtime',name:'Środowisko wykonania',icon:Workflow},{id:'proof',name:'Potwierdzenia',icon:ShieldCheck},{id:'monitoring',name:'Monitorowanie',icon:Activity}];
+const tabs=[{id:'general',name:'Ogólne',icon:SlidersHorizontal},{id:'models',name:'Modele',icon:Boxes},{id:'keys',name:'Klucze API',icon:KeyRound}];
 const scenarios:Record<MockScenario,string>={success:'Pomyślne wykonanie',network:'Błąd sieci',runtime:'Błąd Runtime',apr:'Nieudana weryfikacja APR',interrupted:'Przerwany strumień',unavailable:'Usługa niedostępna'};
 export function Settings({onClose,preferences,onChange}:{onClose:()=>void;preferences:Preferences;onChange:(p:Partial<Preferences>)=>void}){
  const [tab,setTab]=useState('general');
