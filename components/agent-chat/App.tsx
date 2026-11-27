@@ -17,7 +17,9 @@ export default function App(){
  const [sidebar,setSidebar]=useState(false),[desktopCollapsed,setDesktopCollapsed]=useState(false),[settings,setSettings]=useState(false);
  const [drafts,setDrafts]=useState<Record<string,string>>({}),[nearBottom,setNearBottom]=useState(true);
  const scrollRef=useRef<HTMLDivElement>(null),drawerRef=useRef<HTMLElement>(null),menuRef=useRef<HTMLButtonElement>(null);
- const onChange=useCallback((p:Partial<Preferences>)=>setPreferences(v=>({...v,...p,modelId:'glm',mode:'auto',showProof:false,monitoring:false})),[]);
+ const onChange=useCallback((p:Partial<Preferences>)=>{if(p.modelId)try{localStorage.setItem('osa-jeff-model',p.modelId)}catch{};setPreferences(v=>({...v,...p,mode:'auto',showProof:false,monitoring:false}));},[]);
+ useEffect(()=>{try{const saved=localStorage.getItem('osa-jeff-model');if(saved&&(saved==='glm'||saved.includes('|')))setPreferences(v=>({...v,modelId:saved}));}catch{}},[]);
+ useEffect(()=>{if(preferences.modelId!=='glm')try{localStorage.setItem('osa-jeff-model',preferences.modelId)}catch{}},[preferences.modelId]);
  const draft=drafts[chat.activeId]??'';
  const setDraft=(s:string)=>setDrafts(ds=>({...ds,[chat.activeId]:s}));
  useEffect(()=>{const el=scrollRef.current;if(el&&preferences.autoScroll&&nearBottom)el.scrollTop=el.scrollHeight;},[chat.active?.messages,preferences.autoScroll]);

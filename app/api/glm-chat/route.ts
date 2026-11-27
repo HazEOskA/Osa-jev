@@ -7,6 +7,8 @@ const core = require("../../../lib/glm-chat-core.cjs") as {
   makeCompletion: (payload: unknown, env?: NodeJS.ProcessEnv) => unknown
 }
 
+const catalog = require("../../../lib/model-catalog.cjs")
+
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 90
@@ -26,10 +28,8 @@ export async function POST(request: NextRequest) {
   if (!bearer && !cookieSession) {
     return Response.json({ error: "Odmowa dostępu do czatu." }, { status: 401, headers })
   }
-  const apiKey = process.env.EXPLABS_API_KEY
-  if (!apiKey) {
-    return Response.json({ error: "Brak EXPLABS_API_KEY na serwerze." }, { status: 503, headers })
-  }
+  let apiKey = process.env.EXPLABS_API_KEY
+  let endpoint = "https://api.experientiallabs.ai/v1/chat/completions"
   if (Number(request.headers.get("content-length") || 0) > 300_000) {
     return Response.json({ error: "Żądanie jest zbyt duże." }, { status: 413, headers })
   }
@@ -37,13 +37,22 @@ export async function POST(request: NextRequest) {
   try {
     const raw = await request.text()
     if (raw.length > 300_000) return Response.json({ error: "Żądanie jest zbyt duże." }, { status: 413, headers })
-    completion = core.makeCompletion(JSON.parse(raw))
+    const payload = JSON.parse(raw)
+    if (payload?.selection !== undefined) {
+      const chosen = catalog.selection(payload.selection)
+      apiKey = chosen.key
+      endpoint = chosen.config.base + "/chat/completions"
+      completion = core.makeCompletion(payload, {...process.env, EXPLABS_MODEL: chosen.model})
+    } else {
+      completion = core.makeCompletion(payload)
+    }
+    if (!apiKey) return Response.json({error:"Brak klucza API wybranego dostawcy na serwerze."},{status:503,headers})
   } catch (err) {
     return Response.json({ error: err instanceof Error && err instanceof SyntaxError ? "Nieprawidłowy JSON." : err instanceof Error ? err.message : "Błędne dane." }, { status: 400, headers })
   }
   try {
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(80_000)])
-    const upstream = await fetch("https://api.experientiallabs.ai/v1/chat/completions", {
+    const upstream = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -57,8 +66,8 @@ export async function POST(request: NextRequest) {
     if (!upstream.ok) {
       const messages: Record<number, string> = {
         400: "Dostawca odrzucił parametry zapytania.",
-        401: "Dostawca odrzucił klucz EXPLABS_API_KEY.",
-        402: "Brak środków lub wymagane potwierdzenie płatności w Experiential Labs.",
+        401: "Dostawca odrzucił klucz API.",
+        402: "Brak środków lub wymagane potwierdzenie płatności u dostawcy.",
         403: "Model niedostępny dla tego konta.",
         404: "Model nie został znaleziony. Sprawdź EXPLABS_MODEL.",
         429: "Limit zapytań lub środków u dostawcy został osiągnięty.",
@@ -80,7 +89,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (err) {
     const timedOut = err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError")
-    return Response.json({ error: timedOut ? "Połączenie zostało przerwane lub przekroczono czas." : "Błąd połączenia z dostawcą GLM." }, { status: timedOut ? 504 : 502, headers })
+    return Response.json({ error: timedOut ? "Połączenie zostało przerwane lub przekroczono czas." : "Błąd połączenia z dostawcą modelu." }, { status: timedOut ? 504 : 502, headers })
   }
 }
 

@@ -18,3 +18,7 @@ Nie kopiować sekretów z Production do logów lub repozytorium. Brak konfigurac
 ## Testy / akceptacja
 `node --test tests/glm-sse.test.cjs tests/glm-chat-core.test.cjs tests/glm-route.test.cjs`
 Następnie build Vercel Preview, ręczny test desktop/mobile, test wiadomości w polskim UI, status błędów i brak regresji NVIDIA/OpenRouter. Żadnych operacji na Production bez osobnej zgody.
+
+
+## Dynamiczny katalog modeli (OSA Jeff)
+Po zalogowaniu kliknij selektor obok pola wiadomości. Katalog standardowych modeli tekstowych jest pobierany z `/api/models` z Experiential Labs, NVIDIA i OpenRouter, jeżeli ich klucze istnieją w środowisku serwera. Dostęp do katalogu nie potwierdza dostępu do inferencji. Ceny są podawane tylko jeśli dostawca zwraca `pricing.prompt` i `pricing.completion` w USD/token. Nieznana cena nie oznacza modelu darmowego. Wybór jest zapamiętany lokalnie (bez kluczy). Wszystkie wybrane modele korzystają z chronionego `/api/glm-chat` i SSE; historia obejmuje do 40 zakończonych wiadomości. Dotychczasowy model domyślny i sesja pozostają bez zmian. Brak automatycznego przełączania między dostawcami.
