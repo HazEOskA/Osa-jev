@@ -11,7 +11,7 @@ test("catalog accepts existing signed mobile session without optional Origin hea
  process.env.JEFF_CHAT_ACCESS_TOKEN=token;
  global.fetch=async()=>Response.json({data:[]});
  const req=(cookie,headers={})=>({url:"https://osa-jev.vercel.app/api/models",headers:new Headers(headers),cookies:{get:()=>cookie?{value:cookie}:undefined}});
- try{const signed=createSession(token);assert.equal((await GET(req(signed))).status,200);assert.equal((await GET(req())).status,401);assert.equal((await GET(req(signed,{"sec-fetch-site":"cross-site"}))).status,403);assert.equal((await GET(req(signed,{origin:"https://other.invalid"}))).status,403);}
+ try{const signed=createSession(token);assert.equal((await GET(req(signed))).status,200);const publicResponse=await GET(req());assert.equal(publicResponse.status,200);assert.equal((await publicResponse.json()).authenticated,false);assert.equal((await GET(req(signed,{"sec-fetch-site":"cross-site"}))).status,403);assert.equal((await GET(req(signed,{origin:"https://other.invalid"}))).status,403);}
  finally{global.fetch=oldFetch;if(old===undefined)delete process.env.JEFF_CHAT_ACCESS_TOKEN;else process.env.JEFF_CHAT_ACCESS_TOKEN=old;}
 });
 test("model dialog uses native top layer instead of clipped composer child",()=>{

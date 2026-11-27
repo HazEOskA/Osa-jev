@@ -15,6 +15,7 @@ export async function GET(request:NextRequest){
  const origin=request.headers.get("origin")
  const site=request.headers.get("sec-fetch-site")
  if((origin&&origin!==new URL(request.url).origin)||site==="cross-site")return Response.json({error:"Niedozwolone pochodzenie."},{status:403,headers})
- if(!core.checkAccess(request.headers.get("authorization"),secret)&&!session.verifySession(cookie,secret))return Response.json({error:"Brak aktywnej sesji OSA Jeff."},{status:401,headers})
- return Response.json(await models.catalog(),{headers})
+ const authenticated=core.checkAccess(request.headers.get("authorization"),secret)||session.verifySession(cookie,secret)
+ const result=await models.catalog(process.env,fetch,!authenticated)
+ return Response.json({...result,authenticated},{headers})
 }
